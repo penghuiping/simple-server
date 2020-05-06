@@ -35,27 +35,10 @@ func AddRoute(path string, handler func(*Request, *Response)) {
 
 func handle(req *Request, resp *Response) {
 	//处理静态html文件
-	if strings.HasSuffix(req.uri, ".html") {
-		conf := GetConfig()
-		paths := ListFiles(conf.HTMLPath)
-		for _, path := range paths {
-			if strings.HasSuffix(path, ".html") {
-				path1 := strings.SplitN(path, "/", 2)[1]
-				uri := req.uri
-				if strings.HasPrefix(uri, "/") {
-					uri = strings.Replace(uri, "/", "", 1)
-				}
-				if path1 == uri {
-					content, err := ioutil.ReadFile(conf.HTMLPath + "/" + uri)
-					if err != nil {
-						log.Println(err)
-						return
-					}
-					handleHTML(req, resp, content)
-					return
-				}
-			}
-		}
+	result, suffix := isStaticFile(req)
+	if result {
+		handleStaticFile(req, resp, suffix)
+		return
 	}
 
 	//处理自定义router
@@ -83,11 +66,55 @@ func defaultHandle(req *Request, resp *Response) {
 	resp.write()
 }
 
-func handleHTML(req *Request, resp *Response, htmlContent []byte) {
-	resp.code = StatusOK
-	resp.codeMsg = "OK"
-	resp.headers["Content-Type"] = "text/html;charset=utf-8"
-	resp.headers["Connection"] = "keep-alive"
-	resp.body = htmlContent
-	resp.write()
+var contentTypeMap map[string]string = initContentTypeMap()
+
+func initContentTypeMap() map[string]string {
+	map1 := make(map[string]string, 0)
+	map1[".html"] = "text/html;charset=utf-8"
+	map1[".css"] = "text/css;charset=utf-8"
+	return map1
+}
+
+func isStaticFile(req *Request) (bool, string) {
+	flag := false
+	suffix := ""
+	for k, _ := range contentTypeMap {
+		if strings.HasSuffix(req.uri, k) {
+			flag = true
+			suffix = k
+			break
+		}
+	}
+	return flag, suffix
+}
+
+func handleStaticFile(req *Request, resp *Response, suffix string) {
+	//列出html文件夹下所有的静态文件
+	conf := GetConfig()
+	paths := ListFiles(conf.HTMLPath)
+
+	for _, path := range paths {
+		if strings.HasSuffix(path, suffix) {
+			path1 := strings.SplitN(path, "/", 2)[1]
+			uri := req.uri
+			if strings.HasPrefix(uri, "/") {
+				uri = strings.Replace(uri, "/", "", 1)
+			}
+			if path1 == uri {
+				content, err := ioutil.ReadFile(conf.HTMLPath + "/" + uri)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				resp.code = StatusOK
+				resp.codeMsg = "OK"
+				resp.headers["Content-Type"] = contentTypeMap[suffix]
+				resp.headers["Connection"] = "keep-alive"
+				resp.body = content
+				resp.write()
+				return
+			}
+		}
+	}
 }
