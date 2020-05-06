@@ -76,6 +76,8 @@ func initContentTypeMap() map[string]string {
 	map1[".js"] = "application/x-javascript"
 	map1[".gif"] = "image/gif"
 	map1[".png"] = "image/png"
+	map1[".woff"] = "application/x-font-woff"
+	map1[".woff2"] = "application/x-font-woff"
 	return map1
 }
 
