@@ -1,6 +1,7 @@
 package serv
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -72,6 +73,9 @@ func initContentTypeMap() map[string]string {
 	map1 := make(map[string]string, 0)
 	map1[".html"] = "text/html;charset=utf-8"
 	map1[".css"] = "text/css;charset=utf-8"
+	map1[".js"] = "application/x-javascript"
+	map1[".gif"] = "image/gif"
+	map1[".png"] = "image/png"
 	return map1
 }
 
@@ -111,6 +115,7 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 				resp.codeMsg = "OK"
 				resp.headers["Content-Type"] = contentTypeMap[suffix]
 				resp.headers["Connection"] = "keep-alive"
+				resp.headers["Content-Length"] = fmt.Sprintf("%d", len(content))
 				resp.body = content
 				resp.write()
 				return
