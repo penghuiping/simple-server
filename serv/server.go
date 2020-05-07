@@ -118,6 +118,9 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 				resp.headers["Content-Type"] = contentTypeMap[suffix]
 				resp.headers["Connection"] = "keep-alive"
 				resp.headers["Content-Length"] = fmt.Sprintf("%d", len(content))
+				if suffix == ".woff2" {
+					resp.headers["cache-control"] = "max-age=2592000"
+				}
 				resp.body = content
 				resp.write()
 				return

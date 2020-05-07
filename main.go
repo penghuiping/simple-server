@@ -20,10 +20,10 @@ func main() {
 	config.GoroutineNum = 500
 	serv.SetConfig(*config)
 
-	serv.AddRoute("/hello", func(a *serv.Request, b *serv.Response) {
-		b.Body("你好")
-		b.Header("Content-Type", "text/html;charset=utf-8")
-	})
+	// serv.AddRoute("/hello", func(a *serv.Request, b *serv.Response) {
+	// 	b.Body("你好")
+	// 	b.Header("Content-Type", "text/html;charset=utf-8")
+	// })
 
 	// serv.AddRoute("/world", func(a *serv.Request, b *serv.Response) {
 	// 	b.Body("世界")
