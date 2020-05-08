@@ -124,11 +124,12 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 	//列出html文件夹下所有的静态文件
 	conf := GetConfig()
 	file, err := os.OpenFile(conf.HTMLPath+req.uri, os.O_RDONLY, 0666)
+	defer file.Close()
 	if err != nil {
 		log.Println("打开静态文件出错:", err)
+		defaultHandle(req, resp)
 		return
 	}
-	defer file.Close()
 
 	resp.code = StatusOK
 	resp.codeMsg = "OK"
