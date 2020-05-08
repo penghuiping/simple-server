@@ -4,6 +4,7 @@ import (
 	"github.com/penghuiping/simple-server/serv"
 	"log"
 	"os"
+	"runtime"
 )
 
 func main() {
@@ -12,11 +13,10 @@ func main() {
 
 	//设置线程数量，类似定义一个线程池
 	log.SetOutput(os.Stdout)
-
 	config := &serv.Config{}
 	config.HTMLPath = "./html"
 	config.Port = 8080
-	config.GoroutineNum = 500
+	config.GoroutineNum = runtime.NumCPU() * 2
 	serv.SetConfig(config)
 
 	// serv.AddRoute("/hello", func(a *serv.Request, b *serv.Response) {

@@ -123,43 +123,28 @@ func defaultHandle(req *Request, resp *Response) {
 func handleStaticFile(req *Request, resp *Response, suffix string) {
 	//列出html文件夹下所有的静态文件
 	conf := GetConfig()
-	paths := ListFiles(conf.HTMLPath)
-
-	for _, path := range paths {
-		if strings.HasSuffix(path, suffix) {
-			path1 := strings.SplitN(path, "/", 2)[1]
-			uri := req.uri
-			if strings.HasPrefix(uri, "/") {
-				uri = strings.Replace(uri, "/", "", 1)
-			}
-			if path1 == uri {
-				file, err := os.OpenFile(conf.HTMLPath+"/"+uri, os.O_RDONLY, 0666)
-				defer file.Close()
-
-				if err != nil {
-					log.Println(err)
-					return
-				}
-
-				resp.code = StatusOK
-				resp.codeMsg = "OK"
-				config := GetConfig()
-				resp.headers["Content-Type"] = config.contentTypeMap[suffix]
-				resp.headers["Connection"] = "keep-alive"
-
-				fileInfo, err1 := os.Lstat(conf.HTMLPath + "/" + uri)
-				resp.bodySize = fileInfo.Size()
-				if err1 != nil {
-					log.Println(err)
-					return
-				}
-				if suffix == ".woff2" {
-					resp.headers["cache-control"] = "max-age=2592000"
-				}
-				resp.body = bufio.NewReader(file)
-				resp.write()
-				return
-			}
-		}
+	file, err := os.OpenFile(conf.HTMLPath+req.uri, os.O_RDONLY, 0666)
+	if err != nil {
+		log.Println("打开静态文件出错:", err)
+		return
 	}
+	defer file.Close()
+
+	resp.code = StatusOK
+	resp.codeMsg = "OK"
+	config := GetConfig()
+	resp.headers["Content-Type"] = config.contentTypeMap[suffix]
+	resp.headers["Connection"] = "keep-alive"
+	fileInfo, err1 := os.Lstat(conf.HTMLPath + req.uri)
+	resp.bodySize = fileInfo.Size()
+	if err1 != nil {
+		log.Println(err)
+		return
+	}
+	if suffix == ".woff2" {
+		resp.headers["cache-control"] = "max-age=2592000"
+	}
+	resp.body = bufio.NewReader(file)
+	resp.write()
+	return
 }
