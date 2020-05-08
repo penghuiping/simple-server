@@ -12,9 +12,9 @@ func IsBlankStr(value string) bool {
 	con := []byte(value)
 	if len(con) > 0 && con[0] != 0 {
 		return false
-	} else {
-		return true
 	}
+
+	return true
 }
 
 //ListFiles ...

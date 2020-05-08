@@ -15,6 +15,7 @@ type Request struct {
 	remoteAddr string
 }
 
+//解析request
 func parseRequest(content []byte) (*Request, error) {
 	req := &Request{}
 	req.headers = make(map[string]string, 0)
@@ -48,4 +49,19 @@ func parseRequest(content []byte) (*Request, error) {
 
 	}
 	return req, nil
+}
+
+//判断uri指向的路径 是否是静态文件
+func (req *Request) isStaticFile() (bool, string) {
+	flag := false
+	suffix := ""
+	conf := GetConfig()
+	for k, _ := range conf.contentTypeMap {
+		if strings.HasSuffix(req.uri, k) {
+			flag = true
+			suffix = k
+			break
+		}
+	}
+	return flag, suffix
 }

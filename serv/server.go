@@ -1,6 +1,7 @@
 package serv
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,41 +10,88 @@ import (
 	"strings"
 )
 
-//StartServer ...
-func StartServer(conf *Config) {
+//HTTPServer http服务器
+type HTTPServer struct {
+	router map[string]func(*Request, *Response)
+}
+
+//Start 启动服务器
+func (serv *HTTPServer) Start() {
+	serv.router = make(map[string]func(*Request, *Response))
+	conf := GetConfig()
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(conf.Port))
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	defer listener.Close()
-	dispatcher := newDispatcher(config.GoroutineNum)
-	dispatcher.run()
+
+	boss := &Boss{}
+	boss.Start(config.GoroutineNum)
+
+	boss.AddJobHandler("net.conn", func(job *Job) {
+		conn := *(job.Content.(*net.Conn))
+		defer func() {
+			if err := recover(); err != nil {
+				defer conn.Close()
+				log.Println("panic异常是:" + fmt.Sprint(err))
+			}
+		}()
+
+		total := make([]byte, 0)
+		for {
+			buf := make([]byte, 512)
+			len, err3 := conn.Read(buf)
+			if err3 != nil {
+				log.Println(err3)
+				conn.Close()
+				break
+			}
+			if len > 0 {
+				total = bytes.Join([][]byte{total, buf}, []byte{})
+				if len < 512 {
+					//一个请求完结
+					req, _ := parseRequest(total)
+					req.remoteAddr = conn.RemoteAddr().String()
+					total = make([]byte, 0)
+
+					resp := &Response{}
+					resp.init(conn)
+					serv.handle(req, resp)
+				}
+			}
+		}
+
+	})
+
 	for {
 		conn, err1 := listener.Accept()
 		if err1 != nil {
 			log.Println(err1)
 			continue
 		}
-		dispatcher.addJob(&conn)
+
+		job := &Job{}
+		job.JobType = "net.conn"
+		job.Content = &conn
+		boss.AddJob(job)
 	}
 }
 
-//AddRoute ...
-func AddRoute(path string, handler func(*Request, *Response)) {
-	router[path] = handler
+//AddRoute 加入路径路由
+func (serv *HTTPServer) AddRoute(path string, handler func(*Request, *Response)) {
+	serv.router[path] = handler
 }
 
-func handle(req *Request, resp *Response) {
+func (serv *HTTPServer) handle(req *Request, resp *Response) {
 	//处理静态html文件
-	result, suffix := isStaticFile(req)
+	result, suffix := req.isStaticFile()
 	if result {
 		handleStaticFile(req, resp, suffix)
 		return
 	}
-
 	//处理自定义router
-	handle1 := router[req.uri]
+	handle1 := serv.router[req.uri]
 	if handle1 != nil {
 		handle1(req, resp)
 		resp.write()
@@ -55,8 +103,7 @@ func handle(req *Request, resp *Response) {
 	return
 }
 
-var router map[string]func(*Request, *Response) = make(map[string]func(*Request, *Response))
-
+//默认404处理
 func defaultHandle(req *Request, resp *Response) {
 	body := []byte("404 您访问的页面不存在\r\n")
 	resp.code = StatusNotFound
@@ -67,33 +114,7 @@ func defaultHandle(req *Request, resp *Response) {
 	resp.write()
 }
 
-var contentTypeMap map[string]string = initContentTypeMap()
-
-func initContentTypeMap() map[string]string {
-	map1 := make(map[string]string, 0)
-	map1[".html"] = "text/html;charset=utf-8"
-	map1[".css"] = "text/css;charset=utf-8"
-	map1[".js"] = "application/x-javascript"
-	map1[".gif"] = "image/gif"
-	map1[".png"] = "image/png"
-	map1[".woff"] = "application/x-font-woff"
-	map1[".woff2"] = "application/x-font-woff"
-	return map1
-}
-
-func isStaticFile(req *Request) (bool, string) {
-	flag := false
-	suffix := ""
-	for k, _ := range contentTypeMap {
-		if strings.HasSuffix(req.uri, k) {
-			flag = true
-			suffix = k
-			break
-		}
-	}
-	return flag, suffix
-}
-
+//处理静态文件
 func handleStaticFile(req *Request, resp *Response, suffix string) {
 	//列出html文件夹下所有的静态文件
 	conf := GetConfig()
@@ -115,7 +136,8 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 
 				resp.code = StatusOK
 				resp.codeMsg = "OK"
-				resp.headers["Content-Type"] = contentTypeMap[suffix]
+				config := GetConfig()
+				resp.headers["Content-Type"] = config.contentTypeMap[suffix]
 				resp.headers["Connection"] = "keep-alive"
 				resp.headers["Content-Length"] = fmt.Sprintf("%d", len(content))
 				if suffix == ".woff2" {
