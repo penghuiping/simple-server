@@ -32,5 +32,11 @@ func SetConfig(newConfig *Config) {
 	newConfig.contentTypeMap[".png"] = "image/png"
 	newConfig.contentTypeMap[".woff"] = "application/x-font-woff"
 	newConfig.contentTypeMap[".woff2"] = "application/x-font-woff"
+	newConfig.contentTypeMap[".gz"] = "application/x-gzip"
+	newConfig.contentTypeMap[".zip"] = "application/x-zip-compressed"
+	newConfig.contentTypeMap[".rar"] = "application/octet-stream"
+	newConfig.contentTypeMap[".mp4"] = "video/mp4"
+	newConfig.contentTypeMap[".mp3"] = "audio/mpeg"
+	newConfig.contentTypeMap[".7z"] = "application/x-7z-compressed"
 	config = newConfig
 }

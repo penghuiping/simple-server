@@ -1,11 +1,13 @@
 package serv
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -21,7 +23,7 @@ func (serv *HTTPServer) Start() {
 	conf := GetConfig()
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(conf.Port))
 	if err != nil {
-		log.Println(err)
+		log.Println("tcp listen出错:", err)
 		return
 	}
 	defer listener.Close()
@@ -34,7 +36,7 @@ func (serv *HTTPServer) Start() {
 		defer func() {
 			if err := recover(); err != nil {
 				defer conn.Close()
-				log.Println("panic异常是:" + fmt.Sprint(err))
+				log.Println("job异常是:" + fmt.Sprint(err))
 			}
 		}()
 
@@ -43,7 +45,9 @@ func (serv *HTTPServer) Start() {
 			buf := make([]byte, 512)
 			len, err3 := conn.Read(buf)
 			if err3 != nil {
-				log.Println(err3)
+				if err3 != io.EOF {
+					log.Println("connection read出错:", err3)
+				}
 				conn.Close()
 				break
 			}
@@ -67,7 +71,7 @@ func (serv *HTTPServer) Start() {
 	for {
 		conn, err1 := listener.Accept()
 		if err1 != nil {
-			log.Println(err1)
+			log.Println("server listen accet:", err1)
 			continue
 		}
 
@@ -105,12 +109,13 @@ func (serv *HTTPServer) handle(req *Request, resp *Response) {
 
 //默认404处理
 func defaultHandle(req *Request, resp *Response) {
-	body := []byte("404 您访问的页面不存在\r\n")
 	resp.code = StatusNotFound
 	resp.codeMsg = "Not Found"
 	resp.headers["Content-Type"] = "text/html;charset=utf-8"
 	resp.headers["Connection"] = "keep-alive"
-	resp.body = body
+	bodyContent := "404 您访问的页面不存在\r\n"
+	resp.bodySize = int64(len([]byte(bodyContent)))
+	resp.body = bufio.NewReader(strings.NewReader("404 您访问的页面不存在\r\n"))
 	resp.write()
 }
 
@@ -128,7 +133,9 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 				uri = strings.Replace(uri, "/", "", 1)
 			}
 			if path1 == uri {
-				content, err := ioutil.ReadFile(conf.HTMLPath + "/" + uri)
+				file, err := os.OpenFile(conf.HTMLPath+"/"+uri, os.O_RDONLY, 0666)
+				defer file.Close()
+
 				if err != nil {
 					log.Println(err)
 					return
@@ -139,11 +146,17 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 				config := GetConfig()
 				resp.headers["Content-Type"] = config.contentTypeMap[suffix]
 				resp.headers["Connection"] = "keep-alive"
-				resp.headers["Content-Length"] = fmt.Sprintf("%d", len(content))
+
+				fileInfo, err1 := os.Lstat(conf.HTMLPath + "/" + uri)
+				resp.bodySize = fileInfo.Size()
+				if err1 != nil {
+					log.Println(err)
+					return
+				}
 				if suffix == ".woff2" {
 					resp.headers["cache-control"] = "max-age=2592000"
 				}
-				resp.body = content
+				resp.body = bufio.NewReader(file)
 				resp.write()
 				return
 			}
