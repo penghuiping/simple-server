@@ -22,7 +22,7 @@ func main() {
 	config := &serv.Config{}
 	config.HTMLPath = "./html"
 	config.Port = 8080
-	config.GoroutineNum = 20
+	config.GoroutineNum = 500
 	serv.SetConfig(config)
 
 	// serv.AddRoute("/hello", func(a *serv.Request, b *serv.Response) {

@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //HTTPServer http服务器
@@ -63,8 +64,9 @@ func (serv *HTTPServer) Start() {
 					resp := &Response{}
 					resp.init(conn)
 					serv.handle(req, resp)
-					conn.Close()
-					break
+					conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+					// conn.Close()
+					// break
 				}
 			}
 		}
