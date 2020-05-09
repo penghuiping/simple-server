@@ -120,7 +120,7 @@ func (res *Response) write() {
 		res.writer.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
 	}
 	res.writer.Write([]byte("\r\n"))
-	buf := make([]byte, 1024)
+	buf := make([]byte, 4096)
 	for {
 		len, err := res.body.Read(buf)
 		if err != nil {
@@ -131,7 +131,6 @@ func (res *Response) write() {
 			break
 		}
 		res.writer.Write(buf[0:len])
-		res.writer.Flush()
 	}
 
 }
