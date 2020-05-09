@@ -35,7 +35,7 @@ func (serv *HTTPServer) Start() {
 		conn := *(job.Content.(*net.Conn))
 		defer func() {
 			if err := recover(); err != nil {
-				defer conn.Close()
+				conn.Close()
 				log.Println("job异常是:" + fmt.Sprint(err))
 			}
 		}()
@@ -56,12 +56,15 @@ func (serv *HTTPServer) Start() {
 				if len < 512 {
 					//一个请求完结
 					req, _ := parseRequest(total)
+					log.Println(req.uri)
 					req.remoteAddr = conn.RemoteAddr().String()
 					total = make([]byte, 0)
 
 					resp := &Response{}
 					resp.init(conn)
 					serv.handle(req, resp)
+					conn.Close()
+					break
 				}
 			}
 		}

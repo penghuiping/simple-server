@@ -1,22 +1,29 @@
 package main
 
 import (
-	"github.com/penghuiping/simple-server/serv"
 	"log"
+	// "net/http"
+	// _ "net/http/pprof"
 	"os"
 	"runtime"
+
+	"github.com/penghuiping/simple-server/serv"
 )
 
 func main() {
 	// file, _ := os.OpenFile("./server.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 	// defer file.Close()
 
+	// go func() {
+	// 	http.ListenAndServe("0.0.0.0:8081", nil)
+	// }()
+
 	//设置线程数量，类似定义一个线程池
 	log.SetOutput(os.Stdout)
 	config := &serv.Config{}
 	config.HTMLPath = "./html"
 	config.Port = 8080
-	config.GoroutineNum = runtime.NumCPU() * 2
+	config.GoroutineNum = runtime.NumCPU()
 	serv.SetConfig(config)
 
 	// serv.AddRoute("/hello", func(a *serv.Request, b *serv.Response) {
