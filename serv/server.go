@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/libp2p/go-reuseport"
 	"io"
 	"log"
 	"net"
@@ -25,7 +26,8 @@ func (serv *HTTPServer) Start() {
 	addr := &net.TCPAddr{}
 	addr.Port = conf.Port
 
-	listener, err := net.ListenTCP("tcp", addr)
+	listener, err := reuseport.Listen("tcp", ":8080")
+	// listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		log.Println("tcp listen出错:", err)
 		return
