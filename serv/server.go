@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -22,7 +21,11 @@ type HTTPServer struct {
 func (serv *HTTPServer) Start() {
 	serv.router = make(map[string]func(*Request, *Response))
 	conf := GetConfig()
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(conf.Port))
+
+	addr := &net.TCPAddr{}
+	addr.Port = conf.Port
+
+	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		log.Println("tcp listen出错:", err)
 		return
@@ -34,6 +37,10 @@ func (serv *HTTPServer) Start() {
 
 	boss.AddJobHandler("net.conn", func(job *Job) {
 		conn := *(job.Content.(*net.Conn))
+		conn1 := conn.(*net.TCPConn)
+		conn1.SetLinger(-1)
+		conn1.SetNoDelay(true)
+		conn1.SetKeepAlive(false)
 		defer func() {
 			if err := recover(); err != nil {
 				conn.Close()
@@ -42,6 +49,7 @@ func (serv *HTTPServer) Start() {
 		}()
 
 		total := make([]byte, 0)
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		for {
 			buf := make([]byte, 512)
 			len, err3 := conn.Read(buf)
@@ -60,13 +68,12 @@ func (serv *HTTPServer) Start() {
 					log.Println(req.uri)
 					req.remoteAddr = conn.RemoteAddr().String()
 					total = make([]byte, 0)
-
 					resp := &Response{}
 					resp.init(conn)
 					serv.handle(req, resp)
 					conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-					// conn.Close()
-					// break
+					conn.Close()
+					break
 				}
 			}
 		}
@@ -117,7 +124,7 @@ func defaultHandle(req *Request, resp *Response) {
 	resp.code = StatusNotFound
 	resp.codeMsg = "Not Found"
 	resp.headers["Content-Type"] = "text/html;charset=utf-8"
-	resp.headers["Connection"] = "keep-alive"
+	resp.headers["Connection"] = "close"
 	bodyContent := "404 您访问的页面不存在\r\n"
 	resp.bodySize = int64(len([]byte(bodyContent)))
 	resp.body = bufio.NewReader(strings.NewReader("404 您访问的页面不存在\r\n"))
@@ -140,7 +147,7 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 	resp.codeMsg = "OK"
 	config := GetConfig()
 	resp.headers["Content-Type"] = config.contentTypeMap[suffix]
-	resp.headers["Connection"] = "keep-alive"
+	resp.headers["Connection"] = "close"
 	fileInfo, err1 := os.Lstat(conf.HTMLPath + req.uri)
 	resp.bodySize = fileInfo.Size()
 	if err1 != nil {
