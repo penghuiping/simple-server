@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/libp2p/go-reuseport"
 	"io"
 	"log"
 	"net"
@@ -26,8 +25,7 @@ func (serv *HTTPServer) Start() {
 	addr := &net.TCPAddr{}
 	addr.Port = conf.Port
 
-	listener, err := reuseport.Listen("tcp", ":8080")
-	// listener, err := net.ListenTCP("tcp", addr)
+	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		log.Println("tcp listen出错:", err)
 		return
@@ -40,9 +38,9 @@ func (serv *HTTPServer) Start() {
 	boss.AddJobHandler("net.conn", func(job *Job) {
 		conn := *(job.Content.(*net.Conn))
 		conn1 := conn.(*net.TCPConn)
-		conn1.SetLinger(-1)
-		conn1.SetNoDelay(true)
+		conn1.SetLinger(0)
 		conn1.SetKeepAlive(false)
+		conn1.SetNoDelay(true)
 		defer func() {
 			if err := recover(); err != nil {
 				conn.Close()
@@ -51,9 +49,9 @@ func (serv *HTTPServer) Start() {
 		}()
 
 		total := make([]byte, 0)
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		for {
 			buf := make([]byte, 512)
+			conn.SetDeadline(time.Now().Add(60 * time.Second))
 			len, err3 := conn.Read(buf)
 			if err3 != nil {
 				if err3 != io.EOF {
@@ -73,9 +71,8 @@ func (serv *HTTPServer) Start() {
 					resp := &Response{}
 					resp.init(conn)
 					serv.handle(req, resp)
-					conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-					conn.Close()
-					break
+					resp.writer.Flush()
+					conn.SetDeadline(time.Now().Add(60 * time.Second))
 				}
 			}
 		}
@@ -85,7 +82,7 @@ func (serv *HTTPServer) Start() {
 	for {
 		conn, err1 := listener.Accept()
 		if err1 != nil {
-			log.Println("server listen accet:", err1)
+			log.Println("server listen accept:", err1)
 			continue
 		}
 
@@ -126,7 +123,12 @@ func defaultHandle(req *Request, resp *Response) {
 	resp.code = StatusNotFound
 	resp.codeMsg = "Not Found"
 	resp.headers["Content-Type"] = "text/html;charset=utf-8"
-	resp.headers["Connection"] = "close"
+	if req.headers["Connection"] == "" {
+		resp.headers["Connection"] = "close"
+	} else {
+		resp.headers["Connection"] = req.headers["Connection"]
+	}
+	resp.headers["Accept-Ranges"] = "bytes"
 	bodyContent := "404 您访问的页面不存在\r\n"
 	resp.bodySize = int64(len([]byte(bodyContent)))
 	resp.body = bufio.NewReader(strings.NewReader("404 您访问的页面不存在\r\n"))
@@ -149,7 +151,15 @@ func handleStaticFile(req *Request, resp *Response, suffix string) {
 	resp.codeMsg = "OK"
 	config := GetConfig()
 	resp.headers["Content-Type"] = config.contentTypeMap[suffix]
-	resp.headers["Connection"] = "close"
+	resp.headers["Server"] = "simple-server"
+	if req.headers["Connection"] == "" {
+		resp.headers["Connection"] = "close"
+	} else {
+		resp.headers["Connection"] = req.headers["Connection"]
+	}
+
+	resp.headers["Accept-Ranges"] = "bytes"
+	// resp.headers["Date"] = time.Now().Format("Mon, 02 Jan 2006 15:04:05 GMT")
 	fileInfo, err1 := os.Lstat(conf.HTMLPath + req.uri)
 	resp.bodySize = fileInfo.Size()
 	if err1 != nil {

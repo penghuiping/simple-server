@@ -105,7 +105,7 @@ func (res *Response) Code(code int) {
 
 func (res *Response) init(conn net.Conn) {
 	res.headers = make(map[string]string, 0)
-	res.writer = bufio.NewWriter(conn)
+	res.writer = bufio.NewWriterSize(conn, 4096)
 }
 
 func (res *Response) write() {
@@ -127,7 +127,6 @@ func (res *Response) write() {
 			if err != io.EOF {
 				log.Println("response流，写出出错:", err)
 			}
-			res.writer.Flush()
 			break
 		}
 		res.writer.Write(buf[0:len])
