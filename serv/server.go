@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 )
 
 //HTTPServer http服务器
@@ -39,7 +38,7 @@ func (serv *HTTPServer) Start() {
 		conn := *(job.Content.(*net.Conn))
 		conn1 := conn.(*net.TCPConn)
 		conn1.SetLinger(0)
-		conn1.SetKeepAlive(false)
+		conn1.SetKeepAlive(true)
 		conn1.SetNoDelay(true)
 		defer func() {
 			if err := recover(); err != nil {
@@ -51,7 +50,6 @@ func (serv *HTTPServer) Start() {
 		total := make([]byte, 0)
 		for {
 			buf := make([]byte, 512)
-			conn.SetDeadline(time.Now().Add(60 * time.Second))
 			len, err3 := conn.Read(buf)
 			if err3 != nil {
 				if err3 != io.EOF {
@@ -72,7 +70,6 @@ func (serv *HTTPServer) Start() {
 					resp.init(conn)
 					serv.handle(req, resp)
 					resp.writer.Flush()
-					conn.SetDeadline(time.Now().Add(60 * time.Second))
 				}
 			}
 		}
