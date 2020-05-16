@@ -1,11 +1,7 @@
 package serv
 
 import (
-	"bufio"
-	"fmt"
 	"io"
-	"log"
-	"net"
 )
 
 const (
@@ -80,16 +76,15 @@ const (
 
 //Response ...
 type Response struct {
-	writer   *bufio.Writer
 	headers  map[string]string
 	code     int
 	codeMsg  string
 	bodySize int64
-	body     *bufio.Reader
+	body     io.Reader
 }
 
 //Body ...
-func (res *Response) Body(body *bufio.Reader) {
+func (res *Response) Body(body io.Reader) {
 	res.body = body
 }
 
@@ -101,35 +96,4 @@ func (res *Response) Header(name string, value string) {
 //Code ...
 func (res *Response) Code(code int) {
 	res.code = code
-}
-
-func (res *Response) init(conn net.Conn) {
-	res.headers = make(map[string]string, 0)
-	res.writer = bufio.NewWriterSize(conn, 4096)
-}
-
-func (res *Response) write() {
-	res.headers["Content-Length"] = fmt.Sprintf("%d", res.bodySize)
-	if res.code == 0 {
-		res.code = StatusOK
-		res.codeMsg = "OK"
-	}
-
-	res.writer.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", res.code, res.codeMsg)))
-	for k, v := range res.headers {
-		res.writer.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
-	}
-	res.writer.Write([]byte("\r\n"))
-	buf := make([]byte, 4096)
-	for {
-		len, err := res.body.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				log.Println("response流，写出出错:", err)
-			}
-			break
-		}
-		res.writer.Write(buf[0:len])
-	}
-
 }

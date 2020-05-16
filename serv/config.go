@@ -8,6 +8,8 @@ type Config struct {
 	Port           int
 	GoroutineNum   int
 	contentTypeMap map[string]string
+	routers        map[string]func(*Request, *Response)
+	interceptors   []Interceptor
 }
 
 var config *Config
