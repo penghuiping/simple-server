@@ -4,6 +4,7 @@ import (
 	"log"
 	_ "net/http/pprof"
 	"os"
+	"strings"
 
 	"github.com/penghuiping/simple-server/serv"
 )
@@ -19,22 +20,20 @@ func main() {
 	// 	http.ListenAndServe("0.0.0.0:15672", nil)
 	// }()
 
-	config := &serv.Config{}
-	config.HTMLPath = "./html"
-	config.Port = 8080
-	config.GoroutineNum = 1000
-	serv.SetConfig(config)
-
-	// serv.AddRoute("/hello", func(a *serv.Request, b *serv.Response) {
-	// 	b.Body("你好")
-	// 	b.Header("Content-Type", "text/html;charset=utf-8")
-	// })
-
-	// serv.AddRoute("/world", func(a *serv.Request, b *serv.Response) {
-	// 	b.Body("世界")
-	// 	b.Header("Content-Type", "text/html;charset=utf-8")
-	// })
-
 	httpServ := serv.HTTPServer{}
+
+	httpServ.Init("./html", 1000, 8080)
+
+	httpServ.AddRoute("/hello", func(req *serv.Request, resp *serv.Response) {
+		resp.Header("Content-Type", "text/html;charset=utf-8")
+		resp.Body(strings.NewReader("你好"))
+	})
+
+	httpServ.AddRoute("/world", func(req *serv.Request, resp *serv.Response) {
+		resp.Header("Content-Type", "text/html;charset=utf-8")
+		resp.Body(strings.NewReader("世界"))
+	})
+
 	httpServ.Start()
+
 }

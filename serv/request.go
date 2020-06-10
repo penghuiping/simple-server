@@ -23,7 +23,7 @@ func (req *Request) isStaticFile() (bool, string) {
 	flag := false
 	suffix := ""
 	conf := GetConfig()
-	for k, _ := range conf.contentTypeMap {
+	for k := range conf.contentTypeMap {
 		if strings.HasSuffix(req.uri, k) {
 			flag = true
 			suffix = k
@@ -33,15 +33,13 @@ func (req *Request) isStaticFile() (bool, string) {
 	return flag, suffix
 }
 
+//用于判断是否连接是keep-alive
 func (req *Request) isKeepAlive() bool {
 	connection := strings.TrimSpace(req.headers["Connection"])
-	if connection == "" {
-		return false
-	} else {
-		if connection == "keep-alive" {
-			return true
-		} else {
-			return false
-		}
+	if connection == "keep-alive" {
+		return true
 	}
+
+	return false
+
 }
