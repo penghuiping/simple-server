@@ -10,20 +10,20 @@ type Config struct {
 	StaticFilePath string
 	Port           int
 	GoroutineNum   int
-	contentTypeMap map[string]string
-	routers        map[string]func(*Request, *Response)
-	interceptors   []Interceptor
+	ContentTypeMap map[string]string
+	Routers        map[string]func(*Request, *Response)
+	Interceptors   []Interceptor
 }
 
-var config *Config = &Config{
+var config = &Config{
 	StaticFilePath: "./html",
 	Port:           8080,
 	GoroutineNum:   1000,
-	contentTypeMap: initContentType(),
-	routers:        make(map[string]func(*Request, *Response), 0),
-	interceptors:   make([]Interceptor, 0),
+	ContentTypeMap: initContentType(),
+	Routers:        make(map[string]func(*Request, *Response), 0),
+	Interceptors:   make([]Interceptor, 0),
 }
-var mutex sync.RWMutex = sync.RWMutex{}
+var mutex = sync.RWMutex{}
 
 //GetConfig 获取全局配置
 func GetConfig() *Config {
@@ -53,6 +53,23 @@ func initContentType() map[string]string {
 	contentTypeMap[".pdf"] = "application/pdf"
 	return contentTypeMap
 }
+
+const (
+	TypeHtml  = "text/html;charset=utf-8"
+	TypeCss   = "text/css;charset=utf-8"
+	TypeJs    = "application/x-javascript"
+	TypeGif   = "image/gif"
+	TypePng   = "image/png"
+	TypeWoff  = "application/x-font-woff"
+	TypeWoff2 = "application/x-font-woff"
+	TypeGz    = "application/x-gzip"
+	TypeZip   = "application/x-zip-compressed"
+	TypeRar   = "application/octet-stream"
+	TypeMp4   = "video/mp4"
+	TypeMp3   = "audio/mpeg"
+	Type7z    = "application/x-7z-compressed"
+	TypePdf   = "application/pdf"
+)
 
 const (
 	StatusContinue           = 100 // RFC 7231, 6.2.1

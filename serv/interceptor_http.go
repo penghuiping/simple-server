@@ -9,12 +9,15 @@ import (
 	"strings"
 )
 
-//HTTPInterceptor ...
-type HTTPInterceptor struct {
+//PreHTTPInterceptor ...
+type PreHTTPInterceptor struct {
+	Type  int8
+	Order int32
 }
 
-func (h *HTTPInterceptor) preHandle(req *Request) {
-	conn := req.conn
+//Handle 返回值用于判断是否继续执行链路 true:继续执行
+func (h *PreHTTPInterceptor) Handle(req *Request, resp *Response) bool {
+	conn := req.Conn
 	reader := bufio.NewReader(conn)
 	//处理http request 第一行
 	line, err1 := reader.ReadString('\n')
@@ -23,9 +26,9 @@ func (h *HTTPInterceptor) preHandle(req *Request) {
 	}
 	line = strings.TrimRight(line, "\r")
 	firstLine := strings.Split(line, " ")
-	req.method = firstLine[0]
-	req.uri = firstLine[1]
-	req.protocal = firstLine[2]
+	req.Method = firstLine[0]
+	req.URI = firstLine[1]
+	req.Protocal = firstLine[2]
 
 	//处理http request headers
 	for {
@@ -39,55 +42,71 @@ func (h *HTTPInterceptor) preHandle(req *Request) {
 		}
 
 		header := strings.Split(line2, ":")
-		req.headers[header[0]] = header[1]
+		req.Headers[header[0]] = header[1]
 	}
 
 	//处理http request body
-	req.body = conn
-}
-
-func (h *HTTPInterceptor) handle(req *Request, resp *Response) bool {
+	req.Body = conn
 	return true
 }
 
-func (h *HTTPInterceptor) postHandle(req *Request, res *Response) {
-	file, ok := res.body.(*os.File)
+//InterceptorType 用于判断此拦截器的类型 0:前置拦截器 1:后置拦截器
+func (h *PreHTTPInterceptor) InterceptorType() uint8 {
+	return PreIntercpetor
+}
+
+//InterceptorOrder 用于判断此拦截器的先后顺序，数字越小优先级越高,此拦截器就会被优先执行
+func (h *PreHTTPInterceptor) InterceptorOrder() uint32 {
+	return 1
+}
+
+//PostHTTPInterceptor ...
+type PostHTTPInterceptor struct {
+	Type  int8
+	Order int32
+}
+
+//Handle 返回值用于判断是否继续执行链路 true:继续执行
+func (h *PostHTTPInterceptor) Handle(req *Request, res *Response) bool {
+	file, ok := res.Body.(*os.File)
 	if ok {
+		//如果res.Body是os.File类型
 		defer file.Close()
-		fileInfo, err1 := os.Lstat(config.StaticFilePath + req.uri)
-		res.bodySize = fileInfo.Size()
+		fileInfo, err1 := os.Lstat(GetConfig().StaticFilePath + req.URI)
+		res.BodySize = fileInfo.Size()
 		if err1 != nil {
 			panic(err1)
 		}
 	}
 
-	reader, ok := res.body.(*strings.Reader)
+	reader, ok := res.Body.(*strings.Reader)
 	if ok {
-		res.bodySize = reader.Size()
+		//如果res.Body是strings.Reader类型
+		res.BodySize = reader.Size()
 	}
 
-	if res.code == 0 {
-		res.code = StatusOK
-		res.codeMsg = "OK"
+	if res.Code == 0 {
+		res.Code = StatusOK
+		res.CodeMsg = "OK"
 	}
-	if req.isKeepAlive() {
-		res.headers["Connection"] = "keep-alive"
+	if req.IsKeepAlive() {
+		res.Headers["Connection"] = "keep-alive"
 	} else {
-		res.headers["Connection"] = "close"
+		res.Headers["Connection"] = "close"
 	}
-	res.headers["Server"] = "simple-server"
-	res.headers["Accept-Ranges"] = "bytes"
-	res.headers["Content-Length"] = fmt.Sprintf("%d", res.bodySize)
+	res.Headers["Server"] = "simple-server"
+	res.Headers["Accept-Ranges"] = "bytes"
+	res.Headers["Content-Length"] = fmt.Sprintf("%d", res.BodySize)
 
-	writer := bufio.NewWriter(req.conn)
-	writer.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", res.code, res.codeMsg)))
-	for k, v := range res.headers {
+	writer := bufio.NewWriter(req.Conn)
+	writer.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", res.Code, res.CodeMsg)))
+	for k, v := range res.Headers {
 		writer.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
 	}
 	writer.Write([]byte("\r\n"))
 	buf := make([]byte, 4096)
 	for {
-		len, err := res.body.Read(buf)
+		len, err := res.Body.Read(buf)
 		if err != nil {
 			if err != io.EOF {
 				log.Println("response流，写出出错:", err)
@@ -97,23 +116,18 @@ func (h *HTTPInterceptor) postHandle(req *Request, res *Response) {
 		writer.Write(buf[0:len])
 	}
 	writer.Flush()
-	if !req.isKeepAlive() {
+	if !req.IsKeepAlive() {
 		panic(io.EOF)
 	}
+	return true
 }
 
-//HTTPValidationInterceptor ...
-type HTTPValidationInterceptor struct {
+//InterceptorType 用于判断此拦截器的类型 0:前置拦截器 1:后置拦截器
+func (h *PostHTTPInterceptor) InterceptorType() uint8 {
+	return PostIntercpetor
 }
 
-func (h *HTTPValidationInterceptor) preHandle(req *Request) {
-
-}
-
-func (h *HTTPValidationInterceptor) handle(req *Request, resp *Response) bool {
-	return false
-}
-
-func (h *HTTPValidationInterceptor) postHandle(req *Request, resp *Response) {
-
+//InterceptorOrder 用于判断此拦截器的先后顺序，数字越小优先级越高,此拦截器就会被优先执行
+func (h *PostHTTPInterceptor) InterceptorOrder() uint32 {
+	return 1
 }

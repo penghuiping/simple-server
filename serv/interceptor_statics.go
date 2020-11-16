@@ -7,14 +7,14 @@ import (
 
 //StaticFileInterceptor 静态文件处理拦截器
 type StaticFileInterceptor struct {
+	Type  int8
+	Order int32
 }
 
-func (f *StaticFileInterceptor) preHandle(req *Request) {
-}
-
-func (f *StaticFileInterceptor) handle(req *Request, resp *Response) bool {
+//Handle 返回值用于判断是否继续执行链路 true:继续执行
+func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	//判断uri是否是静态文件
-	result, suffix := req.isStaticFile()
+	result, suffix := req.IsStaticFile()
 
 	if !result {
 		return true
@@ -23,24 +23,33 @@ func (f *StaticFileInterceptor) handle(req *Request, resp *Response) bool {
 	//html文件夹是否有符合uri的文件路径
 	config := GetConfig()
 
-	file, err := os.OpenFile(config.StaticFilePath+req.uri, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(config.StaticFilePath+req.URI, os.O_RDONLY, 0666)
 	if err != nil {
 		if os.IsExist(err) {
 			log.Println("打开静态文件出错:", err)
 		}
 		return true
 	}
+	resp.Code = StatusOK
+	resp.CodeMsg = "OK"
 
-	resp.code = StatusOK
-	resp.codeMsg = "OK"
+	resp.Headers["Content-Type"] = config.ContentTypeMap[suffix]
+
 	//处理静态html文件
-	resp.headers["Content-Type"] = config.contentTypeMap[suffix]
 	if suffix == ".woff2" {
-		resp.headers["cache-control"] = "max-age=2592000"
+		resp.Headers["cache-control"] = "max-age=2592000"
 	}
-	resp.body = file
+	resp.Body = file
+	resp.BodySize = 0
 	return false
 }
 
-func (f *StaticFileInterceptor) postHandle(req *Request, resp *Response) {
+//InterceptorType 用于判断此拦截器的类型 0:前置拦截器 1:后置拦截器
+func (f *StaticFileInterceptor) InterceptorType() uint8 {
+	return PostIntercpetor
+}
+
+//InterceptorOrder 用于判断此拦截器的先后顺序，数字越小优先级越高,此拦截器就会被优先执行
+func (f *StaticFileInterceptor) InterceptorOrder() uint32 {
+	return 1
 }

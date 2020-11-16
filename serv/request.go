@@ -8,23 +8,23 @@ import (
 
 //Request ...
 type Request struct {
-	conn       net.Conn
-	protocal   string
-	uri        string
-	method     string
-	headers    map[string]string
-	body       io.Reader
-	remoteAddr string
-	attributes map[string]string
+	Conn       net.Conn
+	Protocal   string
+	URI        string
+	Method     string
+	Headers    map[string]string
+	Body       io.Reader
+	RemoteAddr string
+	Attributes map[string]string
 }
 
-//判断uri指向的路径 是否是静态文件
-func (req *Request) isStaticFile() (bool, string) {
+//IsStaticFile 判断uri指向的路径 是否是静态文件
+func (req *Request) IsStaticFile() (bool, string) {
 	flag := false
 	suffix := ""
 	conf := GetConfig()
-	for k := range conf.contentTypeMap {
-		if strings.HasSuffix(req.uri, k) {
+	for k := range conf.ContentTypeMap {
+		if strings.HasSuffix(req.URI, k) {
 			flag = true
 			suffix = k
 			break
@@ -33,13 +33,11 @@ func (req *Request) isStaticFile() (bool, string) {
 	return flag, suffix
 }
 
-//用于判断是否连接是keep-alive
-func (req *Request) isKeepAlive() bool {
-	connection := strings.TrimSpace(req.headers["Connection"])
+//IsKeepAlive 用于判断是否连接是keep-alive
+func (req *Request) IsKeepAlive() bool {
+	connection := strings.TrimSpace(req.Headers["Connection"])
 	if connection == "keep-alive" {
 		return true
 	}
-
 	return false
-
 }

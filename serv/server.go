@@ -12,19 +12,20 @@ type HTTPServer struct {
 }
 
 //Init 初始化
-func (serv *HTTPServer) Init(htmlPath string, goroutinNum int, port int) {
+func (s *HTTPServer) Init(htmlPath string, goroutinNum int, port int) {
 	conf := GetConfig()
 	conf.StaticFilePath = htmlPath
 	conf.Port = port
 	conf.GoroutineNum = goroutinNum
-	serv.AddInterceptor(&HTTPInterceptor{})
-	serv.AddInterceptor(&RouteIntercetor{})
-	serv.AddInterceptor(&StaticFileInterceptor{})
-	serv.AddInterceptor(&NotFoundInterceptor{})
+	s.AddInterceptor(&PreHTTPInterceptor{})
+	s.AddInterceptor(&PostHTTPInterceptor{})
+	s.AddInterceptor(&RouteIntercetor{})
+	s.AddInterceptor(&StaticFileInterceptor{})
+	s.AddInterceptor(&NotFoundInterceptor{})
 }
 
 //Start 启动服务器
-func (serv *HTTPServer) Start() {
+func (s *HTTPServer) Start() {
 	conf := GetConfig()
 	addr := &net.TCPAddr{}
 	addr.Port = conf.Port
@@ -37,7 +38,7 @@ func (serv *HTTPServer) Start() {
 	defer listener.Close()
 
 	boss := &Boss{}
-	boss.Start(config.GoroutineNum)
+	boss.Start(conf.GoroutineNum)
 
 	boss.AddJobHandler("net.conn", func(job *Job) {
 		conn := *(job.Content.(*net.Conn))
@@ -48,42 +49,32 @@ func (serv *HTTPServer) Start() {
 
 		for {
 			req := &Request{}
-			req.conn = conn
-			req.headers = make(map[string]string, 0)
+			req.Conn = conn
+			req.Headers = make(map[string]string, 0)
 			resp := &Response{}
-			resp.headers = make(map[string]string, 0)
+			resp.Headers = make(map[string]string, 0)
 
 			defer func() {
 				if err := recover(); err != nil {
 					if err != io.EOF {
 						log.Println("job异常是:" + fmt.Sprint(err))
 						handleError(err, req, resp)
-						httpInterceptor := &HTTPInterceptor{}
-						httpInterceptor.postHandle(req, resp)
+						httpInterceptor := &PostHTTPInterceptor{}
+						httpInterceptor.Handle(req, resp)
 					}
 					conn.Close()
 				}
 			}()
 
-			interceptors := GetConfig().interceptors
-
-			//preHandle
-			for _, interceptor := range interceptors {
-				interceptor.preHandle(req)
-			}
-
+			interceptors := GetConfig().Interceptors
 			//handle
 			for _, interceptor := range interceptors {
-				result := interceptor.handle(req, resp)
+				result := interceptor.Handle(req, resp)
 				if !result {
 					break
 				}
 			}
 
-			//postHandle
-			for _, interceptor := range interceptors {
-				interceptor.postHandle(req, resp)
-			}
 		}
 	})
 
@@ -102,11 +93,11 @@ func (serv *HTTPServer) Start() {
 }
 
 //AddRoute 加入路径路由
-func (serv *HTTPServer) AddRoute(path string, handler func(*Request, *Response)) {
-	GetConfig().routers[path] = handler
+func (s *HTTPServer) AddRoute(path string, handler func(*Request, *Response)) {
+	GetConfig().Routers[path] = handler
 }
 
 //AddInterceptor 添加拦截器
-func (serv *HTTPServer) AddInterceptor(interceptor Interceptor) {
-	GetConfig().interceptors = append(GetConfig().interceptors, interceptor)
+func (s *HTTPServer) AddInterceptor(interceptor Interceptor) {
+	GetConfig().Interceptors = append(GetConfig().Interceptors, interceptor)
 }

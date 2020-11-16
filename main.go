@@ -1,12 +1,11 @@
 package main
 
 import (
+	"github.com/penghuiping/simple-server/serv"
 	"log"
 	_ "net/http/pprof"
 	"os"
 	"strings"
-
-	"github.com/penghuiping/simple-server/serv"
 )
 
 func main() {
@@ -25,15 +24,13 @@ func main() {
 	httpServ.Init("./html", 1000, 8080)
 
 	httpServ.AddRoute("/hello", func(req *serv.Request, resp *serv.Response) {
-		resp.Header("Content-Type", "text/html;charset=utf-8")
-		resp.Body(strings.NewReader("你好"))
+		resp.Headers["Content-Type"] = "text/html;charset=utf-8"
+		resp.Body = strings.NewReader("你好")
 	})
 
 	httpServ.AddRoute("/world", func(req *serv.Request, resp *serv.Response) {
-		resp.Header("Content-Type", "text/html;charset=utf-8")
-		resp.Body(strings.NewReader("世界"))
+		resp.Headers["Content-Type"] = "text/html;charset=utf-8"
+		resp.Body = strings.NewReader("世界")
 	})
-
 	httpServ.Start()
-
 }

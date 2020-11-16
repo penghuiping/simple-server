@@ -3,6 +3,7 @@ package serv
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -13,8 +14,18 @@ func IsBlankStr(value string) bool {
 	if len(con) > 0 && con[0] != 0 {
 		return false
 	}
-
 	return true
+}
+
+//IntegerToString ...
+func IntegerToString(value int) string {
+	return strconv.Itoa(value)
+}
+
+//StringToInteger ...
+func StringToInteger(value string) int {
+	res, _ := strconv.Atoi(value)
+	return res
 }
 
 //ListFiles ...
