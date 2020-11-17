@@ -1,7 +1,6 @@
 package serv
 
 import (
-	"errors"
 	"sync"
 )
 
@@ -12,7 +11,6 @@ type Config struct {
 	GoroutineNum   int
 	ContentTypeMap map[string]string
 	Routers        map[string]func(*Request, *Response)
-	Interceptors   []Interceptor
 }
 
 var config = &Config{
@@ -21,7 +19,6 @@ var config = &Config{
 	GoroutineNum:   1000,
 	ContentTypeMap: initContentType(),
 	Routers:        make(map[string]func(*Request, *Response), 0),
-	Interceptors:   make([]Interceptor, 0),
 }
 var mutex = sync.RWMutex{}
 
@@ -31,9 +28,6 @@ func GetConfig() *Config {
 	defer mutex.RUnlock()
 	return config
 }
-
-var errHTTP500 = errors.New("500")
-var errHTTP404 = errors.New("404")
 
 func initContentType() map[string]string {
 	contentTypeMap := make(map[string]string, 0)

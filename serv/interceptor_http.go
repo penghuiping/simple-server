@@ -12,11 +12,12 @@ import (
 //PreHTTPInterceptor ...
 type PreHTTPInterceptor struct {
 	Type  int8
-	Order int32
+	Order int
 }
 
 //Handle 返回值用于判断是否继续执行链路 true:继续执行
 func (h *PreHTTPInterceptor) Handle(req *Request, resp *Response) bool {
+	log.Println("进入PreHTTPInterceptor...")
 	conn := req.Conn
 	reader := bufio.NewReader(conn)
 	//处理http request 第一行
@@ -50,24 +51,15 @@ func (h *PreHTTPInterceptor) Handle(req *Request, resp *Response) bool {
 	return true
 }
 
-//InterceptorType 用于判断此拦截器的类型 0:前置拦截器 1:后置拦截器
-func (h *PreHTTPInterceptor) InterceptorType() uint8 {
-	return PreIntercpetor
-}
-
-//InterceptorOrder 用于判断此拦截器的先后顺序，数字越小优先级越高,此拦截器就会被优先执行
-func (h *PreHTTPInterceptor) InterceptorOrder() uint32 {
-	return 1
-}
-
 //PostHTTPInterceptor ...
 type PostHTTPInterceptor struct {
 	Type  int8
-	Order int32
+	Order int
 }
 
 //Handle 返回值用于判断是否继续执行链路 true:继续执行
 func (h *PostHTTPInterceptor) Handle(req *Request, res *Response) bool {
+	log.Println("进入PostHTTPInterceptor...")
 	file, ok := res.Body.(*os.File)
 	if ok {
 		//如果res.Body是os.File类型
@@ -120,14 +112,4 @@ func (h *PostHTTPInterceptor) Handle(req *Request, res *Response) bool {
 		panic(io.EOF)
 	}
 	return true
-}
-
-//InterceptorType 用于判断此拦截器的类型 0:前置拦截器 1:后置拦截器
-func (h *PostHTTPInterceptor) InterceptorType() uint8 {
-	return PostIntercpetor
-}
-
-//InterceptorOrder 用于判断此拦截器的先后顺序，数字越小优先级越高,此拦截器就会被优先执行
-func (h *PostHTTPInterceptor) InterceptorOrder() uint32 {
-	return 1
 }

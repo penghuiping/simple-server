@@ -9,6 +9,8 @@ import (
 
 //HTTPServer http服务器
 type HTTPServer struct {
+	im   *InterceptorManager
+	conf *Config
 }
 
 //Init 初始化
@@ -17,11 +19,9 @@ func (s *HTTPServer) Init(htmlPath string, goroutinNum int, port int) {
 	conf.StaticFilePath = htmlPath
 	conf.Port = port
 	conf.GoroutineNum = goroutinNum
-	s.AddInterceptor(&PreHTTPInterceptor{})
-	s.AddInterceptor(&PostHTTPInterceptor{})
-	s.AddInterceptor(&RouteIntercetor{})
-	s.AddInterceptor(&StaticFileInterceptor{})
-	s.AddInterceptor(&NotFoundInterceptor{})
+	s.conf = conf
+	s.im = &InterceptorManager{}
+	s.im.Init()
 }
 
 //Start 启动服务器
@@ -37,8 +37,34 @@ func (s *HTTPServer) Start() {
 	}
 	defer listener.Close()
 
+	boss := s.initBossWorkers(conf.GoroutineNum)
+	for {
+		conn, err1 := listener.Accept()
+		if err1 != nil {
+			log.Println("server listen accept:", err1)
+			continue
+		}
+		job := &Job{}
+		job.JobType = "net.conn"
+		job.Content = &conn
+		boss.AddJob(job)
+	}
+}
+
+//AddRoute 加入路径路由
+func (s *HTTPServer) AddRoute(path string, handler func(*Request, *Response)) {
+	GetConfig().Routers[path] = handler
+}
+
+//AddInterceptor 添加拦截器
+func (s *HTTPServer) AddInterceptor(interceptor Interceptor) {
+	s.im.Add(interceptor)
+}
+
+//initBossWorkers 初始化工作线程
+func (s *HTTPServer) initBossWorkers(workersNumber int) *Boss {
 	boss := &Boss{}
-	boss.Start(conf.GoroutineNum)
+	boss.Start(workersNumber)
 
 	boss.AddJobHandler("net.conn", func(job *Job) {
 		conn := *(job.Content.(*net.Conn))
@@ -58,46 +84,17 @@ func (s *HTTPServer) Start() {
 				if err := recover(); err != nil {
 					if err != io.EOF {
 						log.Println("job异常是:" + fmt.Sprint(err))
-						handleError(err, req, resp)
+						serverErrorInterceptor := &ServerErrorInterceptor{}
+						serverErrorInterceptor.Handle(req, resp)
 						httpInterceptor := &PostHTTPInterceptor{}
 						httpInterceptor.Handle(req, resp)
 					}
 					conn.Close()
 				}
 			}()
-
-			interceptors := GetConfig().Interceptors
-			//handle
-			for _, interceptor := range interceptors {
-				result := interceptor.Handle(req, resp)
-				if !result {
-					break
-				}
-			}
-
+			//运行拦截器
+			s.im.Run(req, resp)
 		}
 	})
-
-	for {
-		conn, err1 := listener.Accept()
-		if err1 != nil {
-			log.Println("server listen accept:", err1)
-			continue
-		}
-
-		job := &Job{}
-		job.JobType = "net.conn"
-		job.Content = &conn
-		boss.AddJob(job)
-	}
-}
-
-//AddRoute 加入路径路由
-func (s *HTTPServer) AddRoute(path string, handler func(*Request, *Response)) {
-	GetConfig().Routers[path] = handler
-}
-
-//AddInterceptor 添加拦截器
-func (s *HTTPServer) AddInterceptor(interceptor Interceptor) {
-	GetConfig().Interceptors = append(GetConfig().Interceptors, interceptor)
+	return boss
 }

@@ -13,6 +13,7 @@ type StaticFileInterceptor struct {
 
 //Handle 返回值用于判断是否继续执行链路 true:继续执行
 func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
+	log.Println("进入StaticFileInterceptor...")
 	//判断uri是否是静态文件
 	result, suffix := req.IsStaticFile()
 
@@ -44,12 +45,7 @@ func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	return false
 }
 
-//InterceptorType 用于判断此拦截器的类型 0:前置拦截器 1:后置拦截器
-func (f *StaticFileInterceptor) InterceptorType() uint8 {
-	return PostIntercpetor
-}
-
 //InterceptorOrder 用于判断此拦截器的先后顺序，数字越小优先级越高,此拦截器就会被优先执行
-func (f *StaticFileInterceptor) InterceptorOrder() uint32 {
-	return 1
+func (f *StaticFileInterceptor) InterceptorOrder() int {
+	return 2
 }
