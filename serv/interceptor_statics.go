@@ -35,7 +35,7 @@ func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	resp.Headers["Content-Type"] = req.serv.ContentTypeMap[suffix]
 
 	//处理静态html文件
-	if suffix == ".html" {
+	if suffix != ".html" {
 		resp.Headers["cache-control"] = "max-age=2592000"
 	}
 	resp.Body = file
