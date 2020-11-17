@@ -1,34 +1,35 @@
 package serv
 
 import (
-	"fmt"
-	"io"
 	"log"
 	"net"
 )
 
 //HTTPServer http服务器
 type HTTPServer struct {
-	im   *InterceptorManager
-	conf *Config
+	im             *InterceptorManager
+	StaticFilePath string
+	Port           int
+	GoroutineNum   int
+	ContentTypeMap map[string]string
+	Routers        map[string]func(*Request, *Response)
 }
 
 //Init 初始化
-func (s *HTTPServer) Init(htmlPath string, goroutinNum int, port int) {
-	conf := GetConfig()
-	conf.StaticFilePath = htmlPath
-	conf.Port = port
-	conf.GoroutineNum = goroutinNum
-	s.conf = conf
+func (s *HTTPServer) Init(htmlPath string, workers int, port int) {
+	s.StaticFilePath = htmlPath
+	s.Port = port
+	s.GoroutineNum = workers
 	s.im = &InterceptorManager{}
 	s.im.Init()
+	s.ContentTypeMap = InitContentType()
+	s.Routers = make(map[string]func(*Request, *Response), 0)
 }
 
 //Start 启动服务器
 func (s *HTTPServer) Start() {
-	conf := GetConfig()
 	addr := &net.TCPAddr{}
-	addr.Port = conf.Port
+	addr.Port = s.Port
 
 	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
@@ -37,7 +38,7 @@ func (s *HTTPServer) Start() {
 	}
 	defer listener.Close()
 
-	boss := s.initBossWorkers(conf.GoroutineNum)
+	boss := s.initBossWorkers(s.GoroutineNum)
 	for {
 		conn, err1 := listener.Accept()
 		if err1 != nil {
@@ -53,7 +54,7 @@ func (s *HTTPServer) Start() {
 
 //AddRoute 加入路径路由
 func (s *HTTPServer) AddRoute(path string, handler func(*Request, *Response)) {
-	GetConfig().Routers[path] = handler
+	s.Routers[path] = handler
 }
 
 //AddInterceptor 添加拦截器
@@ -77,21 +78,10 @@ func (s *HTTPServer) initBossWorkers(workersNumber int) *Boss {
 			req := &Request{}
 			req.Conn = conn
 			req.Headers = make(map[string]string, 0)
+			req.serv = s
 			resp := &Response{}
 			resp.Headers = make(map[string]string, 0)
-
-			defer func() {
-				if err := recover(); err != nil {
-					if err != io.EOF {
-						log.Println("job异常是:" + fmt.Sprint(err))
-						serverErrorInterceptor := &ServerErrorInterceptor{}
-						serverErrorInterceptor.Handle(req, resp)
-						httpInterceptor := &PostHTTPInterceptor{}
-						httpInterceptor.Handle(req, resp)
-					}
-					conn.Close()
-				}
-			}()
+			defer s.im.ServerErrorHandle(req, resp)
 			//运行拦截器
 			s.im.Run(req, resp)
 		}

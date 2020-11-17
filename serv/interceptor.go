@@ -1,5 +1,12 @@
 package serv
 
+import (
+	"fmt"
+	"io"
+	"log"
+	"runtime/debug"
+)
+
 //Interceptor 拦截器接口
 type Interceptor interface {
 
@@ -12,20 +19,19 @@ type Interceptor interface {
 
 //InterceptorManager 拦截器管理器
 type InterceptorManager struct {
-	interceptors []Interceptor
-	preHTTP      *PreHTTPInterceptor
-	postHTTP     *PostHTTPInterceptor
+	interceptors    []Interceptor
+	serverErrorHTTP *ServerErrorInterceptor
+	processor       *HTTPProcessor
 }
 
 //Init 初始化拦截器管理器
 func (s *InterceptorManager) Init() {
 	s.interceptors = make([]Interceptor, 0)
-	s.Add(&RouteIntercetor{})
+	s.Add(&RouteInterceptor{})
 	s.Add(&StaticFileInterceptor{})
 	s.Add(&NotFoundInterceptor{})
-	s.Add(&ServerErrorInterceptor{})
-	s.preHTTP = &PreHTTPInterceptor{}
-	s.postHTTP = &PostHTTPInterceptor{}
+	s.processor = &HTTPProcessor{}
+	s.serverErrorHTTP = &ServerErrorInterceptor{}
 }
 
 //Add 添加拦截器
@@ -35,15 +41,28 @@ func (s *InterceptorManager) Add(interceptor Interceptor) {
 
 //Run 运行拦截器
 func (s *InterceptorManager) Run(req *Request, res *Response) {
-	s.preHTTP.Handle(req, res)
-	//先执行PreInterceptor
+	s.processor.Decode(req, res)
 	for _, inter := range s.interceptors {
 		result := inter.Handle(req, res)
 		if !result {
 			break
 		}
 	}
-	s.postHTTP.Handle(req, res)
+	s.processor.Encode(req, res)
+}
+
+//ServerErrorHandle 服务器错误处理
+func (s *InterceptorManager) ServerErrorHandle(req *Request, res *Response) {
+	if err := recover(); err != nil {
+		if err != io.EOF {
+			log.Println("异常是:" + fmt.Sprint(err) + "\n" + string(debug.Stack()))
+			s.serverErrorHTTP.Handle(req, res)
+			s.processor.Encode(req, res)
+		}
+		if req.Conn != nil {
+			req.Conn.Close()
+		}
+	}
 }
 
 //InterceptorSlice ...

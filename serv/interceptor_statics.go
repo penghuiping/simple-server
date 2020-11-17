@@ -22,9 +22,7 @@ func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	}
 
 	//html文件夹是否有符合uri的文件路径
-	config := GetConfig()
-
-	file, err := os.OpenFile(config.StaticFilePath+req.URI, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(req.serv.StaticFilePath+req.URI, os.O_RDONLY, 0666)
 	if err != nil {
 		if os.IsExist(err) {
 			log.Println("打开静态文件出错:", err)
@@ -34,7 +32,7 @@ func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	resp.Code = StatusOK
 	resp.CodeMsg = "OK"
 
-	resp.Headers["Content-Type"] = config.ContentTypeMap[suffix]
+	resp.Headers["Content-Type"] = req.serv.ContentTypeMap[suffix]
 
 	//处理静态html文件
 	if suffix == ".woff2" {

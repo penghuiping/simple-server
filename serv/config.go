@@ -1,35 +1,7 @@
 package serv
 
-import (
-	"sync"
-)
-
-//Config 全局配置类
-type Config struct {
-	StaticFilePath string
-	Port           int
-	GoroutineNum   int
-	ContentTypeMap map[string]string
-	Routers        map[string]func(*Request, *Response)
-}
-
-var config = &Config{
-	StaticFilePath: "./html",
-	Port:           8080,
-	GoroutineNum:   1000,
-	ContentTypeMap: initContentType(),
-	Routers:        make(map[string]func(*Request, *Response), 0),
-}
-var mutex = sync.RWMutex{}
-
-//GetConfig 获取全局配置
-func GetConfig() *Config {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	return config
-}
-
-func initContentType() map[string]string {
+//InitContentType ...
+func InitContentType() map[string]string {
 	contentTypeMap := make(map[string]string, 0)
 	contentTypeMap[".html"] = "text/html;charset=utf-8"
 	contentTypeMap[".css"] = "text/css;charset=utf-8"

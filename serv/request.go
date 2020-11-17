@@ -16,14 +16,14 @@ type Request struct {
 	Body       io.Reader
 	RemoteAddr string
 	Attributes map[string]string
+	serv       *HTTPServer
 }
 
 //IsStaticFile 判断uri指向的路径 是否是静态文件
 func (req *Request) IsStaticFile() (bool, string) {
 	flag := false
 	suffix := ""
-	conf := GetConfig()
-	for k := range conf.ContentTypeMap {
+	for k := range req.serv.ContentTypeMap {
 		if strings.HasSuffix(req.URI, k) {
 			flag = true
 			suffix = k
