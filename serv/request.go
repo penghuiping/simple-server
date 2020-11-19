@@ -21,7 +21,7 @@ type Request struct {
 
 //IsStaticFile 判断uri指向的路径 是否是静态文件
 //return 是否是静态文件，uri地址，静态文件后缀
-func (req *Request) IsStaticFile() (bool, string, string) {
+func (req *Request) IsStaticFile() (bool, string) {
 	flag := false
 	suffix := ""
 	questionMark := "?"
@@ -38,7 +38,8 @@ func (req *Request) IsStaticFile() (bool, string, string) {
 			break
 		}
 	}
-	return flag, uri, suffix
+	req.URI = uri
+	return flag, suffix
 }
 
 //IsKeepAlive 用于判断是否连接是keep-alive
