@@ -82,8 +82,10 @@ func (s *HTTPServer) initBossWorkers(workersNumber int) *Boss {
 			resp := &Response{}
 			resp.Headers = make(map[string]string, 0)
 			defer s.im.ServerErrorHandle(req, resp)
+			s.im.processor.Decode(req, resp)
 			//运行拦截器
 			s.im.Run(req, resp)
+			s.im.processor.Encode(req, resp)
 		}
 	})
 	return boss

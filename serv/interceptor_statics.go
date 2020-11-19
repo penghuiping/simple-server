@@ -7,8 +7,6 @@ import (
 
 //StaticFileInterceptor 静态文件处理拦截器
 type StaticFileInterceptor struct {
-	Type  int8
-	Order int32
 }
 
 //Handle 返回值用于判断是否继续执行链路 true:继续执行
@@ -18,28 +16,26 @@ func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	result, suffix := req.IsStaticFile()
 
 	if !result {
+		//不是静态资源 本拦截器无法处理 直接跳过
 		return true
 	}
 
 	//html文件夹是否有符合uri的文件路径
 	file, err := os.OpenFile(req.serv.StaticFilePath+req.URI, os.O_RDONLY, 0666)
 	if err != nil {
-		if os.IsExist(err) {
-			log.Println("打开静态文件出错:", err)
-		}
-		return true
+		panic(err)
 	}
+
 	resp.Code = StatusOK
 	resp.CodeMsg = "OK"
-
 	resp.Headers["Content-Type"] = req.serv.ContentTypeMap[suffix]
-
 	//处理静态html文件
 	if suffix != ".html" {
 		resp.Headers["cache-control"] = "max-age=2592000"
 	}
 	resp.Body = file
 	resp.BodySize = 0
+	//本拦截器就可以处理，不需要继续执行
 	return false
 }
 

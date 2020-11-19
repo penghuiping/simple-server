@@ -23,8 +23,15 @@ type Request struct {
 func (req *Request) IsStaticFile() (bool, string) {
 	flag := false
 	suffix := ""
+	questionMark := "?"
+	uri := req.URI
+	//先判断是否包含?,如果包含则先移除？后面的字符串信息
+	if strings.Contains(uri, questionMark) {
+		//包含?
+		uri = uri[0:strings.Index(uri, questionMark)]
+	}
 	for k := range req.serv.ContentTypeMap {
-		if strings.HasSuffix(req.URI, k) {
+		if strings.HasSuffix(uri, k) {
 			flag = true
 			suffix = k
 			break

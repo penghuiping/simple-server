@@ -7,8 +7,6 @@ import (
 
 //NotFoundInterceptor 404页面拦截器
 type NotFoundInterceptor struct {
-	Type  int8
-	Order int32
 }
 
 //Handle 返回值用于判断是否继续执行链路 true:继续执行
@@ -28,8 +26,6 @@ func (i *NotFoundInterceptor) InterceptorOrder() int {
 
 //ServerErrorInterceptor 500页面拦截器
 type ServerErrorInterceptor struct {
-	Type  int8
-	Order int32
 }
 
 //Handle 返回值用于判断是否继续执行链路 true:继续执行

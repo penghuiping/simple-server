@@ -41,14 +41,12 @@ func (s *InterceptorManager) Add(interceptor Interceptor) {
 
 //Run 运行拦截器
 func (s *InterceptorManager) Run(req *Request, res *Response) {
-	s.processor.Decode(req, res)
 	for _, inter := range s.interceptors {
 		result := inter.Handle(req, res)
 		if !result {
 			break
 		}
 	}
-	s.processor.Encode(req, res)
 }
 
 //ServerErrorHandle 服务器错误处理
