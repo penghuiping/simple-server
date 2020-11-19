@@ -13,7 +13,7 @@ type StaticFileInterceptor struct {
 func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	log.Println("进入StaticFileInterceptor...")
 	//判断uri是否是静态文件
-	result, suffix := req.IsStaticFile()
+	result, uri, suffix := req.IsStaticFile()
 
 	if !result {
 		//不是静态资源 本拦截器无法处理 直接跳过
@@ -21,7 +21,7 @@ func (f *StaticFileInterceptor) Handle(req *Request, resp *Response) bool {
 	}
 
 	//html文件夹是否有符合uri的文件路径
-	file, err := os.OpenFile(req.serv.StaticFilePath+req.URI, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(req.serv.StaticFilePath+uri, os.O_RDONLY, 0666)
 	if err != nil {
 		panic(err)
 	}
